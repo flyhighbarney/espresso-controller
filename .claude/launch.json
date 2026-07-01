@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "simulator",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "host/simulator", "-l", "3500", "--no-clipboard"],
+      "port": 3500
+    }
+  ]
+}

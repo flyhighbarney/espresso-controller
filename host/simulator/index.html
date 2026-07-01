@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<title>Espresso Extraction Simulator</title>
+<style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --border: #2a2d3a;
+  --text: #e0e0e8;
+  --text-dim: #8888a0;
+  --accent: #f59e0b;
+  --red: #ef4444;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --cyan: #06b6d4;
+  --purple: #a855f7;
+  --orange: #f97316;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header h1 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+header .subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 280px 1fr 260px;
+  height: calc(100vh - 52px);
+}
+
+/* Left panel */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.panel-right {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.panel h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+.param-group {
+  margin-bottom: 20px;
+}
+
+.param-row {
+  margin-bottom: 10px;
+}
+
+.param-row label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 3px;
+  color: var(--text-dim);
+}
+
+.param-row label span.val {
+  color: var(--accent);
+  font-weight: 600;
+  font-family: 'Consolas', monospace;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--border);
+  border-radius: 2px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Buttons */
+.btn-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+button {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-start {
+  background: var(--green);
+  color: #000;
+}
+.btn-start:hover { filter: brightness(1.15); }
+.btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-stop {
+  background: var(--red);
+  color: #fff;
+}
+.btn-stop:hover { filter: brightness(1.15); }
+
+.btn-reset {
+  background: var(--border);
+  color: var(--text);
+}
+.btn-reset:hover { background: #3a3d4a; }
+
+.btn-compare {
+  background: var(--purple);
+  color: #fff;
+  width: 100%;
+}
+.btn-compare:hover { filter: brightness(1.15); }
+
+/* Plot area */
+.plot-area {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.plot-container {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.plot-container canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.plot-label {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  pointer-events: none;
+}
+
+/* Stats panel */
+.stat-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.stat-card .stat-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.stat-card .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Consolas', monospace;
+}
+
+.stat-card .stat-unit {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.state-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.state-idle { background: #333; color: #888; }
+.state-preheat { background: #7c2d12; color: #fdba74; }
+.state-preinfuse { background: #1e3a5f; color: #7dd3fc; }
+.state-extract { background: #14532d; color: #86efac; }
+.state-flush { background: #3b0764; color: #d8b4fe; }
+
+/* Comparison results */
+.compare-results {
+  margin-top: 12px;
+}
+
+.compare-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.compare-row .mode-name {
+  color: var(--text-dim);
+}
+
+.compare-row .mode-value {
+  font-family: 'Consolas', monospace;
+  font-weight: 600;
+}
+
+/* Phase timeline */
+.phase-bar {
+  height: 24px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.phase-segment {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: width 0.3s;
+}
+
+/* Kalman visualization */
+.kalman-viz {
+  margin-top: 8px;
+}
+
+.kalman-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.kalman-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.1s;
+}
+
+.kalman-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-bottom: 2px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Espresso Extraction Simulator</h1>
+    <div class="subtitle">Adaptive Closed-Loop Control &mdash; STM32 Plant Model</div>
+  </div>
+  <div class="subtitle" id="sim-speed">Sim: 1 kHz &bull; Render: 60 fps</div>
+</header>
+
+<div class="main">
+  <!-- Left panel: parameters -->
+  <div class="panel">
+    <h2>Controller</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <select id="ctrl-mode">
+          <option value="pid">Baseline PID</option>
+          <option value="adaptive" selected>Adaptive (Kalman + Gain Sched)</option>
+          <option value="adaptive_ml">Adaptive + ML Predictor</option>
+        </select>
+      </div>
+    </div>
+
+    <h2>PID Gains</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <label>Kp <span class="val" id="kp-val">1.2</span></label>
+        <input type="range" id="kp" min="0" max="50" step="1" value="12">
+      </div>
+      <div class="param-row">
+        <label>Ki <span class="val" id="ki-val">0.6</span></label>
+        <input type="range" id="ki" min="0" max="30" step="1" value="6">
+      </div>
+      <div class="param-row">
+        <label>Kd <span class="val" id="kd-val">0.08</span></label>
+        <input type="range" id="kd" min="0" max="20" step="1" value="8">
+      </div>
+    </div>
+
+    <h2>Plant Parameters</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <label>Grind (resistance R0) <span class="val" id="r0-val">10.0</span></label>
+        <input type="range" id="r0" min="40" max="200" step="1" value="100">
+      </div>
+      <div class="param-row">
+        <label>Dose (g) <span class="val" id="dose-val">18.0</span></label>
+        <input type="range" id="dose" min="140" max="220" step="1" value="180">
+      </div>
+      <div class="param-row">
+        <label>Compaction &alpha; <span class="val" id="alpha-val">0.020</span></label>
+        <input type="range" id="alpha" min="0" max="100" step="1" value="20">
+      </div>
+      <div class="param-row">
+        <label>Channel noise &beta; <span class="val" id="beta-val">0.03</span></label>
+        <input type="range" id="beta" min="0" max="100" step="1" value="30">
+      </div>
+      <div class="param-row">
+        <label>Transport delay (s) <span class="val" id="delay-val">1.0</span></label>
+        <input type="range" id="delay" min="1" max="30" step="1" value="10">
+      </div>
+      <div class="param-row">
+        <label>Sensor noise <span class="val" id="noise-val">0.15</span></label>
+        <input type="range" id="noise" min="0" max="50" step="1" value="15">
+      </div>
+    </div>
+
+    <h2>Profile</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <label>Pre-infuse pressure (bar) <span class="val" id="preinf-val">3.0</span></label>
+        <input type="range" id="preinf" min="10" max="50" step="1" value="30">
+      </div>
+      <div class="param-row">
+        <label>Extract pressure (bar) <span class="val" id="extract-val">9.0</span></label>
+        <input type="range" id="extract" min="60" max="120" step="1" value="90">
+      </div>
+      <div class="param-row">
+        <label>Pre-infuse time (s) <span class="val" id="pi-time-val">5.0</span></label>
+        <input type="range" id="pi-time" min="10" max="100" step="1" value="50">
+      </div>
+    </div>
+
+    <h2>Kalman Tuning</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <label>Q (resistance) <span class="val" id="q-res-val">0.50</span></label>
+        <input type="range" id="q-res" min="1" max="200" step="1" value="50">
+      </div>
+      <div class="param-row">
+        <label>R (pressure) <span class="val" id="r-pres-val">0.20</span></label>
+        <input type="range" id="r-pres" min="1" max="100" step="1" value="20">
+      </div>
+    </div>
+
+    <h2>Simulation</h2>
+    <div class="param-group">
+      <div class="param-row">
+        <label>Speed <span class="val" id="speed-val">1x</span></label>
+        <input type="range" id="speed" min="1" max="10" step="1" value="1">
+      </div>
+    </div>
+  </div>
+
+  <!-- Center: plots -->
+  <div class="plot-area">
+    <div class="phase-bar" id="phase-bar">
+      <div class="phase-segment" style="background:#1e3a5f;color:#7dd3fc;width:0%">Pre-inf</div>
+      <div class="phase-segment" style="background:#14532d;color:#86efac;width:0%">Extract</div>
+      <div class="phase-segment" style="background:#3b0764;color:#d8b4fe;width:0%">Flush</div>
+    </div>
+
+    <div class="plot-container">
+      <div class="plot-label">Pressure (bar)</div>
+      <canvas id="plot-pressure"></canvas>
+    </div>
+    <div class="plot-container">
+      <div class="plot-label">Flow Rate (mL/s)</div>
+      <canvas id="plot-flow"></canvas>
+    </div>
+    <div class="plot-container">
+      <div class="plot-label">Puck Resistance (bar&middot;s/mL)</div>
+      <canvas id="plot-resistance"></canvas>
+    </div>
+    <div class="plot-container">
+      <div class="plot-label">Pump Duty</div>
+      <canvas id="plot-duty"></canvas>
+    </div>
+  </div>
+
+  <!-- Right panel: live stats -->
+  <div class="panel panel-right">
+    <h2>Controls</h2>
+    <div class="btn-row">
+      <button class="btn-start" id="btn-start">Pull Shot</button>
+      <button class="btn-stop" id="btn-stop">Stop</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-reset" id="btn-reset">Reset</button>
+    </div>
+    <button class="btn-compare" id="btn-compare">Run 20-Shot Comparison</button>
+
+    <h2 style="margin-top:16px">Live State</h2>
+    <div style="margin-bottom:8px">
+      <span class="state-badge state-idle" id="state-badge">IDLE</span>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Pressure</div>
+      <div class="stat-value" id="stat-pressure">0.00 <span class="stat-unit">bar</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Flow</div>
+      <div class="stat-value" id="stat-flow">0.00 <span class="stat-unit">mL/s</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Est. Resistance</div>
+      <div class="stat-value" id="stat-resistance">-- <span class="stat-unit">bar&middot;s/mL</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Shot Time</div>
+      <div class="stat-value" id="stat-time">0.0 <span class="stat-unit">s</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pump Duty</div>
+      <div class="stat-value" id="stat-duty">0 <span class="stat-unit">%</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Volume</div>
+      <div class="stat-value" id="stat-volume">0.0 <span class="stat-unit">mL</span></div>
+    </div>
+
+    <h2 style="margin-top:16px">Kalman Estimates</h2>
+    <div class="kalman-viz">
+      <div class="kalman-label"><span>Pressure</span><span id="kf-p">0.00</span></div>
+      <div class="kalman-bar"><div class="kalman-fill" id="kf-p-bar" style="width:0%;background:var(--accent)"></div></div>
+      <div class="kalman-label"><span>Flow</span><span id="kf-f">0.00</span></div>
+      <div class="kalman-bar"><div class="kalman-fill" id="kf-f-bar" style="width:0%;background:var(--cyan)"></div></div>
+      <div class="kalman-label"><span>Resistance</span><span id="kf-r">10.0</span></div>
+      <div class="kalman-bar"><div class="kalman-fill" id="kf-r-bar" style="width:0%;background:var(--green)"></div></div>
+    </div>
+
+    <div class="compare-results" id="compare-results" style="display:none">
+      <h2>Comparison Results</h2>
+      <div id="compare-body"></div>
+    </div>
+  </div>
+</div>
+
+<script src="simulator.js"></script>
+</body>
+</html>
